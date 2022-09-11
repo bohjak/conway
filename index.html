@@ -1,0 +1,14 @@
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>WASM MDN</title>
+  </head>
+  <body>
+    <script type="module">
+      import init, { greet } from "./pkg/wasm_mdn.js";
+      init().then(() => {
+        greet("WebAssembly");
+      });
+    </script>
+  </body>
+</html>
