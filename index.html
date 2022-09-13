@@ -1,13 +1,153 @@
+<!DOCTYPE html>
 <html lang="en-US">
   <head>
     <meta charset="utf-8" />
     <title>WASM MDN</title>
+    <style>
+      body {
+        background: #222;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 0.6;
+      }
+    </style>
   </head>
   <body>
+    <canvas id="canvas"></canvas>
+    <script type="text/javascript">
+      const sse = new EventSource("sse");
+
+      sse.addEventListener("message", () => {
+        window.location.reload();
+      });
+    </script>
+
     <script type="module">
-      import init, { greet } from "./pkg/wasm_mdn.js";
-      init().then(() => {
-        greet("WebAssembly");
+      import init, { Universe, Cell } from "./pkg/wasm_mdn.js";
+
+      init().then(({ memory }) => {
+        const CELL_SIZE = 5;
+        const GRID_COLOR = "#222";
+        const DEAD_COLOR = "#333";
+        const ALIVE_COLOR = "#888";
+
+        const width = 96;
+        const height = 96;
+        let universe = Universe.new(width, height);
+
+        const canvas = document.querySelector("#canvas");
+        canvas.height = (CELL_SIZE + 1) * height + 1;
+        canvas.width = (CELL_SIZE + 1) * width + 1;
+        const ctx = canvas.getContext("2d");
+
+        function drawGrid() {
+          ctx.beginPath();
+          ctx.strokeStyle = GRID_COLOR;
+
+          // Vertical lines.
+          for (let i = 0; i <= width; i++) {
+            ctx.moveTo(i * (CELL_SIZE + 1) + 1, 0);
+            ctx.lineTo(i * (CELL_SIZE + 1) + 1, (CELL_SIZE + 1) * height + 1);
+          }
+
+          // Horizontal lines.
+          for (let j = 0; j <= height; j++) {
+            ctx.moveTo(0, j * (CELL_SIZE + 1) + 1);
+            ctx.lineTo((CELL_SIZE + 1) * width + 1, j * (CELL_SIZE + 1) + 1);
+          }
+
+          ctx.stroke();
+        }
+
+        function getIndex(x, y) {
+          return x + width * y;
+        }
+
+        function drawCells() {
+          const cellsPtr = universe.cells();
+          const cells = new Uint8Array(memory.buffer, cellsPtr, width * height);
+
+          ctx.beginPath();
+          for (let y = 0; y < height; ++y) {
+            for (let x = 0; x < width; ++x) {
+              const idx = getIndex(x, y);
+
+              ctx.fillStyle =
+                cells[idx] === Cell.Dead ? DEAD_COLOR : ALIVE_COLOR;
+
+              ctx.fillRect(
+                x * (CELL_SIZE + 1) + 1,
+                y * (CELL_SIZE + 1) + 1,
+                CELL_SIZE,
+                CELL_SIZE
+              );
+            }
+          }
+          ctx.stroke();
+        }
+
+        window.pause = true;
+        function renderLoop() {
+          universe.next();
+          drawGrid();
+          drawCells();
+
+          if (!window.pause) requestAnimationFrame(renderLoop);
+        }
+
+        const toggle = () => {
+          window.pause = !window.pause;
+          if (!window.pause) renderLoop();
+        };
+
+        window.toggle = toggle;
+
+        document.addEventListener("keydown", (e) => {
+          let def = false;
+          if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+            return;
+          }
+          switch (e.key) {
+            case " ":
+              {
+                toggle();
+              }
+              break;
+            case "r":
+              {
+                universe = Universe.new(width, height);
+                drawGrid();
+                drawCells();
+              }
+              break;
+            case "Enter":
+            case "j":
+            case "l":
+              {
+                universe.next();
+                drawGrid();
+                drawCells();
+              }
+              break;
+            default: {
+              def = true;
+            }
+          }
+
+          if (!def) {
+            e.preventDefault();
+          }
+        });
+
+        drawGrid();
+        drawCells();
+        requestAnimationFrame(renderLoop);
       });
     </script>
   </body>

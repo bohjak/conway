@@ -1,17 +1,6 @@
 use std::fmt;
-use tinyrand::{Probability, Rand, StdRand};
 
 use wasm_bindgen::prelude::*;
-
-#[wasm_bindgen]
-extern "C" {
-    pub fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet(name: &str) {
-    alert(&format!("Hello, {}!", name));
-}
 
 #[wasm_bindgen]
 #[repr(u8)]
