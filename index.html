@@ -6,13 +6,14 @@
     <style>
       body {
         background: #222;
+        margin: 0;
+        padding: 0;
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
         display: flex;
-        align-items: center;
         justify-content: center;
         line-height: 0.6;
       }
@@ -37,8 +38,9 @@
         const DEAD_COLOR = "#333";
         const ALIVE_COLOR = "#888";
 
-        const width = 96;
-        const height = 96;
+        const side = 256;
+        const width = side;
+        const height = side;
         let universe = Universe.new(width, height);
 
         const canvas = document.querySelector("#canvas");
@@ -74,12 +76,32 @@
           const cells = new Uint8Array(memory.buffer, cellsPtr, width * height);
 
           ctx.beginPath();
-          for (let y = 0; y < height; ++y) {
-            for (let x = 0; x < width; ++x) {
+          // Alive cells.
+          ctx.fillStyle = ALIVE_COLOR;
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
               const idx = getIndex(x, y);
+              if (cells[idx] !== Cell.Alive) {
+                continue;
+              }
 
-              ctx.fillStyle =
-                cells[idx] === Cell.Dead ? DEAD_COLOR : ALIVE_COLOR;
+              ctx.fillRect(
+                x * (CELL_SIZE + 1) + 1,
+                y * (CELL_SIZE + 1) + 1,
+                CELL_SIZE,
+                CELL_SIZE
+              );
+            }
+          }
+
+          // Dead cells.
+          ctx.fillStyle = DEAD_COLOR;
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const idx = getIndex(x, y);
+              if (cells[idx] !== Cell.Dead) {
+                continue;
+              }
 
               ctx.fillRect(
                 x * (CELL_SIZE + 1) + 1,
@@ -93,10 +115,18 @@
         }
 
         window.pause = true;
-        function renderLoop() {
+        function render() {
+          const start = performance.now();
           universe.next();
+          const tick = performance.now();
           drawGrid();
           drawCells();
+          const draw = performance.now();
+          console.log("last tick:", tick - start);
+          console.log("last draw:", draw - tick);
+        }
+        function renderLoop() {
+          render();
 
           if (!window.pause) requestAnimationFrame(renderLoop);
         }
@@ -121,7 +151,14 @@
               break;
             case "r":
               {
-                universe = Universe.new(width, height);
+                universe.scramble();
+                drawGrid();
+                drawCells();
+              }
+              break;
+            case "c":
+              {
+                universe.clear();
                 drawGrid();
                 drawCells();
               }
@@ -130,9 +167,7 @@
             case "j":
             case "l":
               {
-                universe.next();
-                drawGrid();
-                drawCells();
+                render();
               }
               break;
             default: {
@@ -145,9 +180,50 @@
           }
         });
 
+        canvas.addEventListener("click", (e) => {
+          const boundingRect = canvas.getBoundingClientRect();
+
+          const scaleX = canvas.width / boundingRect.width;
+          const scaleY = canvas.height / boundingRect.height;
+
+          const canvasLeft = (event.clientX - boundingRect.left) * scaleX;
+          const canvasTop = (event.clientY - boundingRect.top) * scaleY;
+
+          const y = Math.min(
+            Math.floor(canvasTop / (CELL_SIZE + 1)),
+            height - 1
+          );
+          const x = Math.min(
+            Math.floor(canvasLeft / (CELL_SIZE + 1)),
+            width - 1
+          );
+
+          if (e.ctrlKey) {
+            universe.toggle_cell(x - 1, y);
+            universe.toggle_cell(x + 1, y + 1);
+            universe.toggle_cell(x + 1, y);
+            universe.toggle_cell(x + 1, y - 1);
+            universe.toggle_cell(x, y - 1);
+          } else if (e.shiftKey) {
+            universe.toggle_cell(x - 4, y);
+            universe.toggle_cell(x - 3, y);
+            universe.toggle_cell(x - 2, y);
+            universe.toggle_cell(x - 3, y - 1);
+
+            universe.toggle_cell(x + 2, y);
+            universe.toggle_cell(x + 3, y);
+            universe.toggle_cell(x + 4, y);
+            universe.toggle_cell(x + 3, y - 1);
+          } else {
+            universe.toggle_cell(x, y);
+          }
+
+          drawGrid();
+          drawCells();
+        });
+
         drawGrid();
         drawCells();
-        requestAnimationFrame(renderLoop);
       });
     </script>
   </body>

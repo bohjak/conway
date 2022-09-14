@@ -2,12 +2,41 @@ use std::fmt;
 
 use wasm_bindgen::prelude::*;
 
+// TODO: read more about macros
+macro_rules! log {
+    ( $( $t:tt )* ) => {
+        web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
+}
+macro_rules! err {
+    ( $( $t:tt )* ) => {
+        web_sys::console::error_1(&format!( $( $t )* ).into());
+    }
+}
+
+fn now() -> f64 {
+    web_sys::window()
+        .expect("running on server")
+        .performance()
+        .expect("no Performance")
+        .now()
+}
+
 #[wasm_bindgen]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cell {
     Dead = 0,
     Alive = 1,
+}
+
+impl Cell {
+    fn toggle(&mut self) {
+        *self = match *self {
+            Cell::Dead => Cell::Alive,
+            Cell::Alive => Cell::Dead,
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -20,7 +49,19 @@ pub struct Universe {
 #[wasm_bindgen]
 impl Universe {
     pub fn new(width: u32, height: u32) -> Self {
-        let cells = (0..width * height)
+        #[cfg(feature = "console_error_panic_hook")]
+        console_error_panic_hook::set_once();
+        log!("Let there be light!");
+        let cells = (0..width * height).map(|_| Cell::Dead).collect();
+        Universe {
+            width,
+            height,
+            cells,
+        }
+    }
+
+    pub fn scramble(&mut self) {
+        let cells = (0..self.width * self.height)
             .map(|_| {
                 if js_sys::Math::random() > 0.5 {
                     Cell::Alive
@@ -30,11 +71,18 @@ impl Universe {
             })
             .collect();
 
-        Universe {
-            width,
-            height,
-            cells,
-        }
+        self.cells = cells;
+    }
+
+    pub fn clear(&mut self) {
+        let cells = (0..self.width * self.height).map(|_| Cell::Dead).collect();
+
+        self.cells = cells;
+    }
+
+    pub fn toggle_cell(&mut self, x: u32, y: u32) {
+        let idx = self.get_index(x, y);
+        self.cells[idx].toggle();
     }
 
     pub fn width(&self) -> u32 {
@@ -64,7 +112,7 @@ impl Universe {
     }
 
     fn get_index(&self, x: u32, y: u32) -> usize {
-        (y + self.width * x) as usize
+        (x + self.width * y) as usize
     }
 
     fn live_neighbor_count(&self, x: u32, y: u32) -> u8 {
@@ -78,8 +126,8 @@ impl Universe {
                 }
 
                 // TODO: justify why this works for the first row and column
-                let nx = (x + dx) % self.height;
-                let ny = (y + dy) % self.width;
+                let nx = (x + dx) % self.width;
+                let ny = (y + dy) % self.height;
                 count += self.cells[self.get_index(nx, ny)] as u8;
             }
         }
