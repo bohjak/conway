@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo
+echo '#########################'
+echo '#        rustup         #'
+echo '#########################'
+echo
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+export PATH="$HOME/.cargo/bin:$PATH"
+echo $PATH
+
+echo
+echo '#########################'
+echo '#       wasm-pack       #'
+echo '#########################'
+echo
+cargo install wasm-pack
+echo $PATH
+ls -lA "$HOME/.cargo/bin"
