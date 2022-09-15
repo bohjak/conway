@@ -14,6 +14,6 @@ echo '#########################'
 echo '#       wasm-pack       #'
 echo '#########################'
 echo
-cargo install wasm-pack
+curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 echo $PATH
 ls -lA "$HOME/.cargo/bin"
