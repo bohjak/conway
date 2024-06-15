@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if test -z $(which wasm-pack 2> /dev/null); then
+	./setup
+fi
+
+wasm-pack build --target web
